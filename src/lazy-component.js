@@ -17,7 +17,7 @@ export default (lazy) => {
                 return h(this.tag)
             }
             return h(this.tag, {style: {
-                visibility: this.lazyOptions.lazyComponentOptions.prerender ? 'hidden' : 'visible'
+                visibility: this.show ? 'visible' : 'hidden'
             }}, this.$slots.default)
         },
         data () {
