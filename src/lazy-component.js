@@ -13,16 +13,12 @@ export default (lazy) => {
             }
         },
         render (h) {
-            if (this.show === false) {
-                if (!this.lazyOptions.lazyComponentOptions.prerender) {
-                    return h(this.tag)
-                } else {
-                    return h(this.tag, {style: {
-                        visibility: 'hidden'
-                    }}, this.$slots.default)
-                }
+            if (this.show === false && !this.lazyOptions.lazyComponentOptions.prerender) {
+                return h(this.tag)
             }
-            return h(this.tag, null, this.$slots.default)
+            return h(this.tag, {style: {
+                visibility: this.show ? 'visible' : 'hidden'
+            }}, this.$slots.default)
         },
         data () {
             return {
