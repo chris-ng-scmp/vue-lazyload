@@ -1,8 +1,8 @@
-import { 
+import {
     inBrowser,
-    remove, 
-    some, 
-    find, 
+    remove,
+    some,
+    find,
     _,
     throttle,
     supportWebp,
@@ -20,13 +20,13 @@ import ReactiveListener from './listener'
 const DEFAULT_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 const DEFAULT_EVENTS = ['scroll', 'wheel', 'mousewheel', 'resize', 'animationend', 'transitionend', 'touchmove']
 const DEFAULT_OBSERVER_OPTIONS = {
-    rootMargin: '0px', 
+    rootMargin: '0px',
     threshold: 0
 }
 
 export default function (Vue) {
     return class Lazy {
-        constructor ({ preLoad, error, throttleWait, preLoadTop, dispatchEvent, loading, attempt, silent, scale, listenEvents, hasbind, filter, adapter, observer, observerOptions }) {
+        constructor ({ preLoad, error, throttleWait, preLoadTop, dispatchEvent, loading, attempt, silent, scale, listenEvents, hasbind, filter, adapter, observer, observerOptions, lazyComponentOptions }) {
             this.version = '__VUE_LAZYLOAD_VERSION__'
             this.mode = modeType.event
             this.ListenerQueue = []
@@ -48,7 +48,8 @@ export default function (Vue) {
                 filter: filter || {},
                 adapter: adapter || {},
                 observer: !!observer,
-                observerOptions: observerOptions || DEFAULT_OBSERVER_OPTIONS
+                observerOptions: observerOptions || DEFAULT_OBSERVER_OPTIONS,
+                lazyComponentOptions: lazyComponentOptions || {prerender: false}
             }
             this._initEvent()
 
@@ -68,7 +69,7 @@ export default function (Vue) {
 
         /**
          * output listener's load performance
-         * @return {Array} 
+         * @return {Array}
          */
         performance () {
             let list = []
@@ -90,7 +91,12 @@ export default function (Vue) {
             this.ListenerQueue.push(vm)
             if (inBrowser) {
                 this._addListenerTarget(window)
-                this._observer && this._observer.observe(vm.el)
+                if (hasIntersectionObserver && vm.lazyOptions.observerOptions !== this.options.observerOptions) {
+                    vm.observer = new IntersectionObserver(this._observerHandler.bind(this), vm.lazyOptions.observerOptions)
+                    vm.observer.observe(vm.el)
+                } else {
+                    this._observer && this._observer.observe(vm.el)
+                }
                 if (vm.$el && vm.$el.parentNode) {
                     this._addListenerTarget(vm.$el.parentNode)
                 }
@@ -99,7 +105,7 @@ export default function (Vue) {
 
         /**
          * add image listener to queue
-         * @param  {DOM} el 
+         * @param  {DOM} el
          * @param  {object} binding vue directive binding
          * @param  {vnode} vnode vue directive vnode
          * @return
@@ -154,7 +160,7 @@ export default function (Vue) {
 
          /**
          * update image src
-         * @param  {DOM} el 
+         * @param  {DOM} el
          * @param  {object} vue directive binding
          * @return
          */
@@ -176,7 +182,7 @@ export default function (Vue) {
 
         /**
          * remove listener form list
-         * @param  {DOM} el 
+         * @param  {DOM} el
          * @return
          */
         remove (el) {
@@ -192,7 +198,7 @@ export default function (Vue) {
 
         /**
          * remove lazy components form list
-         * @param  {Vue} vm Vue instance 
+         * @param  {Vue} vm Vue instance
          * @return
          */
         removeComponent (vm) {
@@ -211,7 +217,7 @@ export default function (Vue) {
             }
 
             this.mode = mode // event or observer
-            
+
             if (mode === modeType.event) {
                 if (this._observer) {
                     this.ListenerQueue.forEach(listener => {
@@ -230,12 +236,12 @@ export default function (Vue) {
                 this._initIntersectionObserver()
             }
         }
-        
+
         /**** Private functions ****/
 
         /**
          * add listener target
-         * @param  {DOM} el listener target 
+         * @param  {DOM} el listener target
          * @return
          */
         _addListenerTarget (el) {
@@ -324,11 +330,11 @@ export default function (Vue) {
          * @return
          */
         _lazyLoadHandler () {
-            let catIn = false
             this.ListenerQueue.forEach(listener => {
                 if (listener.state.loaded) return
-                catIn = listener.checkInView()
-                catIn && listener.load()
+                if (listener.checkInView()) {
+                    listener.load()
+                }
             })
         }
 
@@ -356,10 +362,11 @@ export default function (Vue) {
                 if (entry.isIntersecting) {
                     this.ListenerQueue.forEach(listener => {
                         if (listener.el === entry.target) {
-                            if (listener.state.loaded) return this._observer.unobserve(listener.el)
+                            if (listener.state.loaded) return observer.unobserve(listener.el)
+                            observer.unobserve(listener.el)
                             listener.load()
                         }
-                        
+
                     })
                 }
             })
@@ -369,7 +376,7 @@ export default function (Vue) {
          * set element attribute with image'url and state
          * @param  {object} lazyload listener object
          * @param  {string} state will be rendered
-         * @param  {bool} inCache  is rendered from cache 
+         * @param  {bool} inCache  is rendered from cache
          * @return
          */
         _elRenderer (listener, state, cache) {
@@ -409,7 +416,7 @@ export default function (Vue) {
         }
 
         /**
-         * generate loading loaded error image url 
+         * generate loading loaded error image url
          * @param {string} image's src
          * @return {object} image's loading, loaded, error url
          */
